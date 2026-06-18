@@ -207,6 +207,7 @@
             <tr>
               <th class="py-2 px-3 fw-bold text-nowrap">ID</th>
               <th class="py-2 px-3 fw-bold text-nowrap">Doador</th>
+              <th class="py-2 px-3 fw-bold text-nowrap">Sexo</th>
               <th class="py-2 px-3 fw-bold text-nowrap">UF / Cidade</th>
               <th class="py-2 px-3 fw-bold text-nowrap">Telefone</th>
               <th class="py-2 px-3 fw-bold text-nowrap">CPF</th>
@@ -257,9 +258,24 @@
               <span class="position-absolute bg-danger text-white fw-bold text-uppercase rounded-1" style="right:10px; top:50%; transform:translateY(-50%); font-size:8.5px; letter-spacing:.8px; padding:2px 6px;">Auto</span>
             </div>
           </div>
-          <div class="col-12 col-md-8">
+          <div class="col-12 col-md-4">
             <label class="form-label fw-semibold text-dark mb-1" style="font-size:12px;">Nome completo <span class="text-danger">*</span></label>
             <input type="text" class="form-control focus-ring focus-ring-danger text-dark" id="fNome" placeholder="Ex: Maria Oliveira" style="border-color:#E2E8F0; border-radius:8px; font-size:13.5px; padding:8px 12px;">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size:12px;">
+              Sexo <span class="text-danger">*</span>
+            </label>
+            <select
+              class="form-select focus-ring focus-ring-danger text-dark"
+              id="fSexo"
+              style="border-color:#E2E8F0; border-radius:8px; font-size:13.5px; padding:8px 12px;"
+            >
+              <option value="">Selecione...</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+              <option value="O">Outro</option>
+            </select>
           </div>
         </div>
         
@@ -343,13 +359,13 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   let doadores = [
-    {id:'D-001',nome:'Ana Paula Ferreira',  uf:'ES',cidade:'Vitória',                 telefone:'(27) 98823-1100',cpf:'123.456.789-00',status:'Aprovado', tipo:'A+'},
-    {id:'D-002',nome:'Carlos Mendes',        uf:'SP',cidade:'São Paulo',               telefone:'(11) 97700-4422',cpf:'234.567.890-11',status:'Pendente', tipo:'O-'},
-    {id:'D-003',nome:'Fernanda Lima',         uf:'RJ',cidade:'Rio de Janeiro',          telefone:'(21) 99133-5500',cpf:'345.678.901-22',status:'Aprovado', tipo:'B+'},
-    {id:'D-004',nome:'José Antônio da Silva', uf:'MG',cidade:'Belo Horizonte',          telefone:'(31) 98844-6611',cpf:'456.789.012-33',status:'Reprovado',tipo:'AB-'},
-    {id:'D-005',nome:'Luciana Santos',        uf:'ES',cidade:'Cachoeiro de Itapemirim', telefone:'(28) 99955-7722',cpf:'567.890.123-44',status:'Aprovado', tipo:'O+'},
-    {id:'D-006',nome:'Roberto Costa',         uf:'BA',cidade:'Salvador',                telefone:'(71) 98766-8833',cpf:'678.901.234-55',status:'Pendente', tipo:'A-'},
-    {id:'D-007',nome:'Patrícia Alves',        uf:'PR',cidade:'Curitiba',                telefone:'(41) 99877-9944',cpf:'789.012.345-66',status:'Aprovado', tipo:'B-'},
+    {id:'D-001',nome:'Ana Paula Ferreira', sexo:'F',  uf:'ES',cidade:'Vitória',                 telefone:'(27) 98823-1100',cpf:'123.456.789-00',status:'Aprovado', tipo:'A+'},
+    {id:'D-002',nome:'Carlos Mendes', sexo:'M',       uf:'SP',cidade:'São Paulo',               telefone:'(11) 97700-4422',cpf:'234.567.890-11',status:'Pendente', tipo:'O-'},
+    {id:'D-003',nome:'Fernanda Lima', sexo:'F',        uf:'RJ',cidade:'Rio de Janeiro',          telefone:'(21) 99133-5500',cpf:'345.678.901-22',status:'Aprovado', tipo:'B+'},
+    {id:'D-004',nome:'José Antônio da Silva', sexo:'M', uf:'MG',cidade:'Belo Horizonte',          telefone:'(31) 98844-6611',cpf:'456.789.012-33',status:'Reprovado',tipo:'AB-'},
+    {id:'D-005',nome:'Luciana Santos', sexo:'F',       uf:'ES',cidade:'Cachoeiro de Itapemirim', telefone:'(28) 99955-7722',cpf:'567.890.123-44',status:'Aprovado', tipo:'O+'},
+    {id:'D-006',nome:'Roberto Costa', sexo:'M',        uf:'BA',cidade:'Salvador',                telefone:'(71) 98766-8833',cpf:'678.901.234-55',status:'Pendente', tipo:'A-'},
+    {id:'D-007',nome:'Patrícia Alves', sexo:'F',       uf:'PR',cidade:'Curitiba',                telefone:'(41) 99877-9944',cpf:'789.012.345-66',status:'Aprovado', tipo:'B-'},
   ];
   const cidadesMap = {
     ES:['Vitória','Serra','Cachoeiro de Itapemirim','Linhares','Colatina'],
@@ -372,6 +388,26 @@
 
   function renderTable(data){
     document.getElementById('countLabel').textContent=`${data.length} registro${data.length!==1?'s':''} encontrado${data.length!==1?'s':''}`;
+    document.getElementById('doadorTableBody').innerHTML=data.map(d=>`
+      <tr class="align-middle">
+        <td>...</td>
+        <td>...</td>
+
+        <!-- AQUI -->
+        <td class="py-3 px-3 border-bottom border-light-subtle text-dark">
+          ${
+            d.sexo === 'M'
+              ? 'Masculino'
+              : d.sexo === 'F'
+              ? 'Feminino'
+              : 'Outro'
+          }
+        </td>
+
+        <td>...</td>
+        <td>...</td>
+      </tr>
+    `).join('');
     const empty=`<div class="text-center text-secondary py-5 px-3" style="font-size:13.5px;"><i class="bi bi-inbox d-block mb-2 opacity-50" style="font-size:30px;"></i>Nenhum doador encontrado.</div>`;
     if(!data.length){
       document.getElementById('doadorTableBody').innerHTML=`<tr><td colspan="8" class="p-0 border-0">${empty}</td></tr>`;
@@ -382,6 +418,15 @@
       <tr class="align-middle">
         <td class="py-3 px-3 border-bottom border-light-subtle"><span class="d-inline-block text-secondary fw-bold rounded px-2" style="font-size:10.5px; background:#F4F6F9; padding-top:1px; padding-bottom:1px;">${d.id}</span></td>
         <td class="py-3 px-3 border-bottom border-light-subtle"><div class="d-flex align-items-center gap-2"><div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:30px; height:30px; background:#FDECEA; color:#C0392B; font-size:11px;">${ini(d.nome)}</div><strong class="text-dark" style="font-size:13.5px;">${d.nome}</strong></div></td>
+        <td class="py-3 px-3 border-bottom border-light-subtle text-dark">
+          ${
+            d.sexo === 'M'
+              ? 'Masculino'
+              : d.sexo === 'F'
+              ? 'Feminino'
+              : 'Outro'
+          }
+        </td>
         <td class="py-3 px-3 border-bottom border-light-subtle text-dark" style="font-size:12.5px">${d.uf} / ${d.cidade}</td>
         <td class="py-3 px-3 border-bottom border-light-subtle text-dark" style="font-size:12.5px">${d.telefone}</td>
         <td class="py-3 px-3 border-bottom border-light-subtle text-dark" style="font-family:monospace;font-size:12px">${d.cpf}</td>
@@ -425,7 +470,7 @@
     document.getElementById('modalSub').textContent='Preencha os campos para cadastrar um novo doador.';
     document.getElementById('btnSaveLabel').textContent='Salvar';
     document.getElementById('fId').value='Gerado automaticamente';
-    ['fNome','fTelefone','fCPF'].forEach(id=>document.getElementById(id).value='');
+    ['fNome', 'fSexo','fTelefone','fCPF'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('fUF').value=''; document.getElementById('fStatus').value='Pendente';
     document.getElementById('fTipoSang').value='A+';
     document.getElementById('fCidade').innerHTML='<option value="">Selecione a UF…</option>';
@@ -437,7 +482,7 @@
     document.getElementById('modalTitle').textContent='Editar Doador';
     document.getElementById('modalSub').textContent=`Editando: ${d.nome}`;
     document.getElementById('btnSaveLabel').textContent='Atualizar';
-    document.getElementById('fId').value=d.id; document.getElementById('fNome').value=d.nome;
+    document.getElementById('fId').value=d.id; document.getElementById('fNome').value=d.nome; document.getElementById('fSexo').value = d.sexo;
     document.getElementById('fUF').value=d.uf; populateCidades('fCidade',d.uf);
     setTimeout(()=>document.getElementById('fCidade').value=d.cidade,10);
     document.getElementById('fTelefone').value=d.telefone; document.getElementById('fCPF').value=d.cpf;
@@ -446,18 +491,39 @@
   
   function saveDoador(){
     const nome=document.getElementById('fNome').value.trim();
+    const sexo=document.getElementById('fSexo').value;
     const uf=document.getElementById('fUF').value;
     const cid=document.getElementById('fCidade').value;
     const tel=document.getElementById('fTelefone').value.trim();
     const cpf=document.getElementById('fCPF').value.trim();
     const st=document.getElementById('fStatus').value;
     const tp=document.getElementById('fTipoSang').value;
-    if(!nome||!uf||!cid||!tel||!cpf){showAlert('danger','<i class="bi bi-exclamation-triangle-fill"></i> Preencha todos os campos obrigatórios.');return;}
+    if(!nome||!sexo||!uf||!cid||!tel||!cpf){showAlert('danger','<i class="bi bi-exclamation-triangle-fill"></i> Preencha todos os campos obrigatórios.');return;}
     if(editingId){
-      doadores[doadores.findIndex(x=>x.id===editingId)]={id:editingId,nome,uf,cidade:cid,telefone:tel,cpf,status:st,tipo:tp};
+      doadores[doadores.findIndex(x=>x.id===editingId)] = {
+      id: editingId,
+      nome,
+      sexo,
+      uf,
+      cidade: cid,
+      telefone: tel,
+      cpf,
+      status: st,
+      tipo: tp
+    };
       showAlert('success',`<i class="bi bi-check-circle-fill"></i> Doador <strong class="ms-1">${nome}</strong> atualizado!`);
     }else{
-      doadores.push({id:`D-${String(nextId++).padStart(3,'0')}`,nome,uf,cidade:cid,telefone:tel,cpf,status:st,tipo:tp});
+      doadores.push({
+      id:`D-${String(nextId++).padStart(3,'0')}`,
+      nome,
+      sexo,
+      uf,
+      cidade: cid,
+      telefone: tel,
+      cpf,
+      status: st,
+      tipo: tp
+    });
       showAlert('success',`<i class="bi bi-check-circle-fill"></i> Doador <strong class="ms-1">${nome}</strong> cadastrado!`);
     }
     bootstrap.Modal.getInstance(document.getElementById('modalDoador')).hide();
