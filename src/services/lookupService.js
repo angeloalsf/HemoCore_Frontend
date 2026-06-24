@@ -1,5 +1,5 @@
-// Serviços de apoio para popular os selects do formulário de Doador.
-// Tipos sanguíneos, cidades e UFs vêm da própria API (sem dados mockados).
+// Serviços de apoio para popular os selects dos formulários (Doador, Doação…).
+// Tipos sanguíneos, cidades, UFs e enfermeiros vêm da própria API (sem mocks).
 import { apiClient } from './apiClient';
 
 export const tipoSanguineoService = {
@@ -12,6 +12,11 @@ export const cidadeService = {
 
 export const ufService = {
   listar: (opts) => apiClient.get('/ufs', opts),
+};
+
+// Enfermeiros são relacionamento obrigatório da Doação (enfermeiro.id).
+export const enfermeiroService = {
+  listar: (opts) => apiClient.get('/enfermeiros', opts),
 };
 
 /** Rótulo do tipo sanguíneo: grupoABO + (fatorRH ? '+' : '-') — igual ao getModelVerboso do backend. */
