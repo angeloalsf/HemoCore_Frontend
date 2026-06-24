@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import PageLayout from '../../components/layout/PageLayout';
+import { FilterSelect } from '../../components/common/TableCard';
 
 export function ReportLayout({ title, subtitle, children }) {
   const handlePrint = () => window.print();
@@ -72,6 +73,8 @@ export function RelSomatorio() {
   );
 }
 
+const TIPOS_SANGUINEOS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 export function RelDoadores() {
   const data = [
     { id: 'D-001', nome: 'Ana Paula Ferreira', cpf: '123.456.789-01', cidade: 'Vitória/ES', tipo: 'A+', doacoes: 8, status: 'Apto para Doação', ultima: '02/04/2025' },
@@ -79,11 +82,26 @@ export function RelDoadores() {
     { id: 'D-005', nome: 'Luciana Santos', cpf: '345.678.901-23', cidade: 'Cachoeiro/ES', tipo: 'O+', doacoes: 12, status: 'Apto para Doação', ultima: '02/04/2025' },
     { id: 'D-007', nome: 'Patrícia Alves', cpf: '456.789.012-34', cidade: 'Curitiba/PR', tipo: 'B-', doacoes: 3, status: 'Apto para Doação', ultima: '25/03/2025' },
   ];
+
+  const [tipoFiltro, setTipoFiltro] = useState('');
+  const filtrados = useMemo(
+    () => (tipoFiltro ? data.filter((d) => d.tipo === tipoFiltro) : data),
+    [tipoFiltro]
+  );
+
   return (
     <ReportLayout title="Doadores Ativos" subtitle="Lista de doadores com status Apto para Doação e histórico de doações">
+      <div className="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-center mb-3">
+        <p className="text-secondary mb-0" style={{ fontSize: 11.5 }}>
+          {filtrados.length} registro{filtrados.length !== 1 ? 's' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+        </p>
+        <FilterSelect value={tipoFiltro} onChange={setTipoFiltro}
+          options={[{ value: '', label: 'Todos os tipos' }, ...TIPOS_SANGUINEOS.map((t) => ({ value: t, label: t }))]} />
+      </div>
       <ReportTable
         headers={['ID', 'Nome', 'CPF', 'Cidade/UF', 'Tipo Sanguíneo', 'Total de Doações', 'Status', 'Data da Última Doação']}
-        rows={data.map((d) => (
+        emptyMessage={tipoFiltro ? `Nenhum doador ativo do tipo ${tipoFiltro}.` : 'Nenhum dado encontrado.'}
+        rows={filtrados.map((d) => (
           <tr key={d.id} className="align-middle">
             <td className="py-3 px-3 border-bottom border-light-subtle"><span className="id-badge">{d.id}</span></td>
             <td className="py-3 px-3 border-bottom border-light-subtle fw-bold text-dark">{d.nome}</td>
