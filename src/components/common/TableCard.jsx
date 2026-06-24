@@ -57,9 +57,10 @@ export function SearchInput({ value, onChange, placeholder }) {
   );
 }
 
-export function FilterSelect({ value, onChange, options, style }) {
+export function FilterSelect({ value, onChange, options, style, disabled = false }) {
   return (
     <select className="form-select flex-shrink-0 w-auto" value={value} onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
       style={{ borderRadius: 8, fontSize: 12.5, height: 36, borderColor: '#E2E8F0', ...style }}>
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>

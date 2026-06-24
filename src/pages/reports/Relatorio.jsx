@@ -1,6 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import PageLayout from '../../components/layout/PageLayout';
 import { FilterSelect } from '../../components/common/TableCard';
+import { useDoadoresAtivos } from '../../hooks/useDoadoresAtivos';
+import { tipoSanguineoLabel } from '../../services/lookupService';
+
+// Formata data ISO (YYYY-MM-DD) vinda da API para o padrão pt-BR (apenas exibição).
+function formatDataBR(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = String(iso).slice(0, 10).split('-');
+  return d && m && y ? `${d}/${m}/${y}` : iso;
+}
 
 export function ReportLayout({ title, subtitle, children }) {
   const handlePrint = () => window.print();
@@ -73,47 +82,76 @@ export function RelSomatorio() {
   );
 }
 
-const TIPOS_SANGUINEOS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-
 export function RelDoadores() {
-  const data = [
-    { id: 'D-001', nome: 'Ana Paula Ferreira', cpf: '123.456.789-01', cidade: 'Vitória/ES', tipo: 'A+', doacoes: 8, status: 'Apto para Doação', ultima: '02/04/2025' },
-    { id: 'D-003', nome: 'Fernanda Lima', cpf: '234.567.890-12', cidade: 'Rio de Janeiro/RJ', tipo: 'B+', doacoes: 5, status: 'Apto para Doação', ultima: '18/03/2025' },
-    { id: 'D-005', nome: 'Luciana Santos', cpf: '345.678.901-23', cidade: 'Cachoeiro/ES', tipo: 'O+', doacoes: 12, status: 'Apto para Doação', ultima: '02/04/2025' },
-    { id: 'D-007', nome: 'Patrícia Alves', cpf: '456.789.012-34', cidade: 'Curitiba/PR', tipo: 'B-', doacoes: 3, status: 'Apto para Doação', ultima: '25/03/2025' },
-  ];
+  // Integração real com a API (sem mocks): GET /doacoes/doadores-ativos.
+  // O backend já força status = 'APTO' e ordena por última doação (desc);
+  // o filtro por tipo sanguíneo é aplicado no servidor via id.
+  const {
+    doadores, tiposSanguineos,
+    tipoSanguineo, setTipoSanguineo,
+    loading, loadError, carregar,
+  } = useDoadoresAtivos();
 
-  const [tipoFiltro, setTipoFiltro] = useState('');
-  const filtrados = useMemo(
-    () => (tipoFiltro ? data.filter((d) => d.tipo === tipoFiltro) : data),
-    [tipoFiltro]
+  // Opções do seletor: id do tipo sanguíneo como value, rótulo amigável como label.
+  const tipoOptions = useMemo(
+    () => [
+      { value: '', label: 'Todos os tipos' },
+      ...tiposSanguineos.map((t) => ({ value: String(t.id), label: tipoSanguineoLabel(t) })),
+    ],
+    [tiposSanguineos]
   );
 
+  const tipoLabelSelecionado = useMemo(() => {
+    const t = tiposSanguineos.find((x) => String(x.id) === String(tipoSanguineo));
+    return t ? tipoSanguineoLabel(t) : '';
+  }, [tiposSanguineos, tipoSanguineo]);
+
   return (
-    <ReportLayout title="Doadores Ativos" subtitle="Lista de doadores com status Apto para Doação e histórico de doações">
+    <ReportLayout title="Doadores Ativos" subtitle="Lista de doadores com status Apto para Doação, ordenados pela última doação">
+      {loadError && (
+        <div className="alert bg-danger-subtle text-danger border border-danger-subtle d-flex align-items-center justify-content-between gap-2 py-2 px-3 shadow-sm mb-3"
+          style={{ borderRadius: 10, fontSize: 13 }}>
+          <span><i className="bi bi-exclamation-triangle-fill me-2"></i>{loadError}</span>
+          <button className="btn btn-sm btn-danger text-white fw-semibold border-0" style={{ borderRadius: 8, fontSize: 12 }}
+            onClick={() => carregar()} disabled={loading}>
+            <i className="bi bi-arrow-clockwise me-1"></i>Tentar novamente
+          </button>
+        </div>
+      )}
+
       <div className="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-center mb-3">
         <p className="text-secondary mb-0" style={{ fontSize: 11.5 }}>
-          {filtrados.length} registro{filtrados.length !== 1 ? 's' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+          {loading
+            ? 'Carregando…'
+            : `${doadores.length} registro${doadores.length !== 1 ? 's' : ''} encontrado${doadores.length !== 1 ? 's' : ''}`}
         </p>
-        <FilterSelect value={tipoFiltro} onChange={setTipoFiltro}
-          options={[{ value: '', label: 'Todos os tipos' }, ...TIPOS_SANGUINEOS.map((t) => ({ value: t, label: t }))]} />
+        <FilterSelect value={tipoSanguineo} onChange={setTipoSanguineo}
+          options={tipoOptions} disabled={loading} style={loading ? { opacity: 0.6 } : undefined} />
       </div>
-      <ReportTable
-        headers={['ID', 'Nome', 'CPF', 'Cidade/UF', 'Tipo Sanguíneo', 'Total de Doações', 'Status', 'Data da Última Doação']}
-        emptyMessage={tipoFiltro ? `Nenhum doador ativo do tipo ${tipoFiltro}.` : 'Nenhum dado encontrado.'}
-        rows={filtrados.map((d) => (
-          <tr key={d.id} className="align-middle">
-            <td className="py-3 px-3 border-bottom border-light-subtle"><span className="id-badge">{d.id}</span></td>
-            <td className="py-3 px-3 border-bottom border-light-subtle fw-bold text-dark">{d.nome}</td>
-            <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{d.cpf}</td>
-            <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{d.cidade}</td>
-            <td className="py-3 px-3 border-bottom border-light-subtle"><span className="blood-type-badge">{d.tipo}</span></td>
-            <td className="py-3 px-3 border-bottom border-light-subtle fw-bold text-danger">{d.doacoes}</td>
-            <td className="py-3 px-3 border-bottom border-light-subtle"><span className="fw-semibold rounded-pill bg-success-subtle text-success" style={{ fontSize: 11, padding: '2px 9px' }}>{d.status}</span></td>
-            <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{d.ultima}</td>
-          </tr>
-        ))}
-      />
+
+      {loading ? (
+        <div className="card border border-light-subtle rounded-4 text-center text-secondary py-5 px-3" style={{ background: '#fff', fontSize: 13.5 }}>
+          <div className="spinner-border text-danger mb-2 mx-auto" role="status" style={{ width: 28, height: 28 }}>
+            <span className="visually-hidden">Carregando…</span>
+          </div>
+          <div>Carregando doadores ativos…</div>
+        </div>
+      ) : (
+        <ReportTable
+          headers={['Nome', 'CPF', 'UF', 'Tipo Sanguíneo', 'Status', 'Data da Última Doação']}
+          emptyMessage={tipoLabelSelecionado ? `Nenhum doador ativo do tipo ${tipoLabelSelecionado}.` : 'Nenhum doador ativo encontrado.'}
+          rows={doadores.map((d, i) => (
+            <tr key={`${d.cpf}-${d.dataDoacao}-${i}`} className="align-middle">
+              <td className="py-3 px-3 border-bottom border-light-subtle fw-bold text-dark">{d.nome}</td>
+              <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{d.cpf}</td>
+              <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{d.uf}</td>
+              <td className="py-3 px-3 border-bottom border-light-subtle"><span className="blood-type-badge">{d.tipoSanguineo}</span></td>
+              <td className="py-3 px-3 border-bottom border-light-subtle"><span className="fw-semibold rounded-pill bg-success-subtle text-success" style={{ fontSize: 11, padding: '2px 9px' }}>Apto para Doação</span></td>
+              <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{formatDataBR(d.dataDoacao)}</td>
+            </tr>
+          ))}
+        />
+      )}
     </ReportLayout>
   );
 }
