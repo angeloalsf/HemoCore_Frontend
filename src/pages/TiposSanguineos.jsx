@@ -6,7 +6,8 @@ import AlertBox from '../components/common/AlertBox';
 import FormField, { FormSectionLabel, AutoIdField, baseInputStyle } from '../components/common/FormField';
 import { useAlert } from '../hooks/useAlert';
 import { useBsModal } from '../hooks/useBsModal';
-import { INITIAL_TIPOS_SANGUINEOS } from '../data/seedData';
+import { useTiposSanguineos } from '../hooks/useTiposSanguineos';
+import { ApiError } from '../services/apiClient';
 
 const GRUPOS = ['A', 'B', 'AB', 'O'];
 const RHS = ['Rh(+)', 'Rh(-)'];
@@ -21,8 +22,8 @@ function validate(form) {
 }
 
 export default function TiposSanguineos() {
-  const [list, setList] = useState(INITIAL_TIPOS_SANGUINEOS);
-  const [nextId, setNextId] = useState(9);
+  const { tipos, loading, saving, deleting, busy, loadError, carregar, criar, atualizar, remover } = useTiposSanguineos();
+
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -32,144 +33,178 @@ export default function TiposSanguineos() {
   const modal = useBsModal();
   const delModal = useBsModal();
 
-  const filtered = list.filter((t) =>
-    `${t.grupo}${t.rh}`.toLowerCase().includes(search.toLowerCase()) || (t.desc || '').toLowerCase().includes(search.toLowerCase())
+  const filtered = tipos.filter((t) =>
+    `${t.grupoABO}${t.fatorRH ? '+' : '-'}`.toLowerCase().includes(search.toLowerCase()) ||
+    (t.descricao || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const openCreate = () => { setEditingId(null); setForm(EMPTY_FORM); setFormErrors({}); modal.show(); };
   const openEdit = (id) => {
-    const t = list.find((x) => x.id === id);
+    const t = tipos.find((x) => x.id === id);
     if (!t) return;
     setEditingId(id);
-    setForm({ grupo: t.grupo, rh: t.rh, quantidade: t.quantidade, desc: t.desc || '' });
+    setForm({ grupo: t.grupoABO, rh: t.fatorRH ? 'Rh(+)' : 'Rh(-)', quantidade: t.quantidade, desc: t.descricao || '' });
     setFormErrors({});
     modal.show();
   };
 
-  const save = () => {
+  const save = async () => {
     const errs = validate(form);
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
     setFormErrors({});
-    const tipo = `${form.grupo}${form.rh === 'Rh(+)' ? '+' : '-'}`;
-    const payload = { grupo: form.grupo, rh: form.rh, quantidade: parseInt(form.quantidade), desc: form.desc };
-    if (editingId) {
-      setList((p) => p.map((x) => x.id === editingId ? { ...x, ...payload } : x));
-      showAlert('success', `Tipo sanguíneo <strong>${tipo}</strong> atualizado!`);
-    } else {
-      const id = `TS-${String(nextId).padStart(3, '0')}`;
-      setNextId((n) => n + 1);
-      setList((p) => [...p, { id, ...payload }]);
-      showAlert('success', `Tipo sanguíneo <strong>${tipo}</strong> cadastrado!`);
+    const label = `${form.grupo}${form.rh === 'Rh(+)' ? '+' : '-'}`;
+    try {
+      if (editingId) {
+        await atualizar(editingId, form);
+        showAlert('success', `Tipo sanguíneo <strong>${label}</strong> atualizado!`);
+      } else {
+        await criar(form);
+        showAlert('success', `Tipo sanguíneo <strong>${label}</strong> cadastrado!`);
+      }
+      modal.hide();
+    } catch (err) {
+      if (err instanceof ApiError && err.details?.length) {
+        const errMap = {};
+        err.details.forEach(d => { if (d.campo) errMap[d.campo] = d.mensagem; });
+        setFormErrors(errMap);
+      }
+      showAlert('danger', err instanceof ApiError ? err.toUserMessage() : 'Erro ao salvar tipo sanguíneo.');
     }
-    modal.hide();
   };
 
   const openDelete = (id) => { setDeletingId(id); delModal.show(); };
-  const confirmDelete = () => {
-    const t = list.find((x) => x.id === deletingId);
-    setList((p) => p.filter((x) => x.id !== deletingId));
-    showAlert('warning', `Tipo <strong>${t?.grupo}${t?.rh === 'Rh(+)' ? '+' : '-'}</strong> removido.`);
+  const confirmDelete = async () => {
+    const t = tipos.find((x) => x.id === deletingId);
+    const label = t ? `${t.grupoABO}${t.fatorRH ? '+' : '-'}` : '';
     setDeletingId(null);
     delModal.hide();
+    try {
+      await remover(t.id);
+      showAlert('warning', `Tipo <strong>${label}</strong> removido.`);
+    } catch (err) {
+      showAlert('danger', err instanceof ApiError ? err.toUserMessage() : 'Erro ao excluir tipo sanguíneo.');
+    }
   };
 
-  const totalVol = list.reduce((s, t) => s + t.quantidade, 0);
-  const delTarget = list.find((x) => x.id === deletingId);
+  const totalVol = tipos.reduce((s, t) => s + (t.quantidade || 0), 0);
+  const delTarget = tipos.find((x) => x.id === deletingId);
 
   return (
     <PageLayout title="Tipos Sanguíneos" subtitle="Gerenciamento de tipos sanguíneos e estoque"
       action={
         <button className="btn btn-danger text-white fw-semibold d-inline-flex align-items-center gap-2 py-1 px-3 border-0 shadow-sm"
-          style={{ fontSize: 13, borderRadius: 8, whiteSpace: 'nowrap' }} onClick={openCreate}>
+          style={{ fontSize: 13, borderRadius: 8, whiteSpace: 'nowrap' }} onClick={openCreate} disabled={loading}>
           <i className="bi bi-plus-lg"></i><span className="d-none d-sm-inline">Novo Tipo</span>
         </button>
       }>
 
       <div className="row row-cols-2 row-cols-lg-4 g-2 g-sm-3 mb-3 mb-sm-4">
-        <StatCard icon="bi-droplet-half" value={list.length} label="Tipos Cadastrados" bgColor="#FDECEA" iconColor="#C0392B" />
-        <StatCard icon="bi-moisture" value={`${totalVol.toLocaleString('pt-BR')} mL`} label="Volume Total" bgColor="#EBF5FB" iconColor="#2980B9" />
-        <StatCard icon="bi-check-circle-fill" value={list.filter((t) => t.quantidade > 200).length} label="Estoque OK" bgColor="#EAFAF1" iconColor="#27AE60" />
-        <StatCard icon="bi-exclamation-triangle-fill" value={list.filter((t) => t.quantidade <= 200).length} label="Estoque Baixo" bgColor="#FEF9E7" iconColor="#D4AC0D" />
+        <StatCard icon="bi-droplet-half" value={loading ? '…' : tipos.length} label="Tipos Cadastrados" bgColor="#FDECEA" iconColor="#C0392B" />
+        <StatCard icon="bi-moisture" value={loading ? '…' : `${totalVol.toLocaleString('pt-BR')} mL`} label="Volume Total" bgColor="#EBF5FB" iconColor="#2980B9" />
+        <StatCard icon="bi-check-circle-fill" value={loading ? '…' : tipos.filter((t) => t.quantidade > 200).length} label="Estoque OK" bgColor="#EAFAF1" iconColor="#27AE60" />
+        <StatCard icon="bi-exclamation-triangle-fill" value={loading ? '…' : tipos.filter((t) => t.quantidade <= 200).length} label="Estoque Baixo" bgColor="#FEF9E7" iconColor="#D4AC0D" />
       </div>
 
       <AlertBox alert={alert} />
+
+      {loadError && (
+        <div className="alert bg-danger-subtle text-danger border border-danger-subtle d-flex align-items-center justify-content-between gap-2 py-2 px-3 shadow-sm mb-3"
+          style={{ borderRadius: 10, fontSize: 13 }}>
+          <span><i className="bi bi-exclamation-triangle-fill me-2"></i>{loadError}</span>
+          <button className="btn btn-sm btn-danger text-white fw-semibold border-0" style={{ borderRadius: 8, fontSize: 12 }}
+            onClick={carregar} disabled={loading}>
+            <i className="bi bi-arrow-clockwise me-1"></i>Tentar novamente
+          </button>
+        </div>
+      )}
 
       <TableCard title="Lista de Tipos Sanguíneos" count={filtered.length}
         filters={<SearchInput value={search} onChange={setSearch} placeholder="Buscar tipo…" />}
         footer={<Pagination current={1} total={filtered.length} onPrev={() => {}} onNext={() => {}} />}>
 
-        <div className="table-responsive d-none d-md-block">
-          <table className="table table-borderless table-hover mb-0" style={{ fontSize: 13 }}>
-            <thead>
-              <tr className="table-header-cell">
-                {['ID', 'Tipo', 'Grupo ABO', 'Fator Rh', 'Estoque (mL)', 'Descrição', 'Ações'].map((h, i) => (
-                  <th key={h} className={`py-2 px-3 fw-bold text-nowrap${i === 6 ? ' text-end' : ''}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {!filtered.length ? (
-                <tr><td colSpan={7} className="p-0 border-0"><EmptyState message="Nenhum tipo sanguíneo encontrado." /></td></tr>
-              ) : filtered.map((t) => (
-                <tr key={t.id} className="align-middle">
-                  <td className="py-3 px-3 border-bottom border-light-subtle"><span className="id-badge">{t.id}</span></td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle">
-                    <span className="blood-type-badge" style={{ fontSize: 14 }}>{t.grupo}{t.rh === 'Rh(+)' ? '+' : '-'}</span>
-                  </td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle"><span className="fw-bold text-dark">{t.grupo}</span></td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle">
-                    <span className={`fw-semibold rounded-pill ${t.rh === 'Rh(+)' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}
-                      style={{ fontSize: 11, padding: '2px 8px' }}>{t.rh}</span>
-                  </td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="progress" style={{ width: 60, height: 5 }}>
-                        <div className="progress-bar bg-danger" style={{ width: `${Math.min(100, Math.round(t.quantidade / 1000 * 100))}%` }}></div>
-                      </div>
-                      <span className={`fw-bold ${t.quantidade <= 200 ? 'text-warning' : 'text-danger'}`} style={{ fontSize: 12 }}>
-                        {t.quantidade.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle text-secondary" style={{ fontSize: 12, maxWidth: 200 }}>{t.desc}</td>
-                  <td className="py-3 px-3 border-bottom border-light-subtle text-end">
-                    <div className="d-flex gap-1 justify-content-end">
-                      <ActionBtn icon="bi-pencil" color="#718096" onClick={() => openEdit(t.id)} title="Editar" />
-                      <ActionBtn icon="bi-trash3" color="#C0392B" onClick={() => openDelete(t.id)} title="Excluir" />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="text-center text-secondary py-5" style={{ fontSize: 13.5 }}>
+            <div className="spinner-border text-danger mb-2 mx-auto" role="status" style={{ width: 28, height: 28 }}>
+              <span className="visually-hidden">Carregando…</span>
+            </div>
+            <div>Carregando tipos sanguíneos…</div>
+          </div>
+        ) : (
+          <>
+            <div className="table-responsive d-none d-md-block">
+              <table className="table table-borderless table-hover mb-0" style={{ fontSize: 13 }}>
+                <thead>
+                  <tr className="table-header-cell">
+                    {['ID', 'Tipo', 'Grupo ABO', 'Fator Rh', 'Estoque (mL)', 'Descrição', 'Ações'].map((h, i) => (
+                      <th key={h} className={`py-2 px-3 fw-bold text-nowrap${i === 6 ? ' text-end' : ''}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {!filtered.length ? (
+                    <tr><td colSpan={7} className="p-0 border-0"><EmptyState message="Nenhum tipo sanguíneo encontrado." /></td></tr>
+                  ) : filtered.map((t) => (
+                    <tr key={t.id} className="align-middle">
+                      <td className="py-3 px-3 border-bottom border-light-subtle"><span className="id-badge">{t.id}</span></td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle">
+                        <span className="blood-type-badge" style={{ fontSize: 14 }}>{t.grupoABO}{t.fatorRH ? '+' : '-'}</span>
+                      </td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle"><span className="fw-bold text-dark">{t.grupoABO}</span></td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle">
+                        <span className={`fw-semibold rounded-pill ${t.fatorRH ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}
+                          style={{ fontSize: 11, padding: '2px 8px' }}>{t.fatorRH ? 'Rh(+)' : 'Rh(-)'}</span>
+                      </td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle">
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress" style={{ width: 60, height: 5 }}>
+                            <div className="progress-bar bg-danger" style={{ width: `${Math.min(100, Math.round((t.quantidade || 0) / 1000 * 100))}%` }}></div>
+                          </div>
+                          <span className={`fw-bold ${(t.quantidade || 0) <= 200 ? 'text-warning' : 'text-danger'}`} style={{ fontSize: 12 }}>
+                            {(t.quantidade || 0).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle text-secondary" style={{ fontSize: 12, maxWidth: 200 }}>{t.descricao}</td>
+                      <td className="py-3 px-3 border-bottom border-light-subtle text-end">
+                        <div className="d-flex gap-1 justify-content-end">
+                          <ActionBtn icon="bi-pencil" color="#718096" onClick={() => openEdit(t.id)} title="Editar" disabled={busy} />
+                          <ActionBtn icon="bi-trash3" color="#C0392B" onClick={() => openDelete(t.id)} title="Excluir" disabled={busy} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        <div className="d-flex flex-column d-md-none">
-          {!filtered.length ? <EmptyState message="Nenhum tipo sanguíneo encontrado." /> :
-            filtered.map((t, i) => (
-              <div key={t.id} className={`p-3 d-flex align-items-start gap-2${i !== filtered.length - 1 ? ' border-bottom border-light-subtle' : ''}`}>
-                <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 38, height: 38, background: '#FDECEA', color: '#C0392B', fontSize: 15 }}>
-                  <i className="bi bi-droplet-half"></i>
-                </div>
-                <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                  <div className="id-badge mb-1">{t.id}</div>
-                  <div className="fw-bold text-dark" style={{ fontSize: 16 }}>{t.grupo}{t.rh === 'Rh(+)' ? '+' : '-'}</div>
-                  <div className="text-secondary mt-1" style={{ fontSize: 11.5 }}>{t.desc}</div>
-                  <div className="mt-2">
-                    <span className={`fw-bold ${t.quantidade <= 200 ? 'text-warning' : 'text-danger'}`} style={{ fontSize: 12 }}>
-                      Estoque: {t.quantidade.toLocaleString('pt-BR')} mL
-                    </span>
+            <div className="d-flex flex-column d-md-none">
+              {!filtered.length ? <EmptyState message="Nenhum tipo sanguíneo encontrado." /> :
+                filtered.map((t, i) => (
+                  <div key={t.id} className={`p-3 d-flex align-items-start gap-2${i !== filtered.length - 1 ? ' border-bottom border-light-subtle' : ''}`}>
+                    <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: 38, height: 38, background: '#FDECEA', color: '#C0392B', fontSize: 15 }}>
+                      <i className="bi bi-droplet-half"></i>
+                    </div>
+                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                      <div className="id-badge mb-1">{t.id}</div>
+                      <div className="fw-bold text-dark" style={{ fontSize: 16 }}>{t.grupoABO}{t.fatorRH ? '+' : '-'}</div>
+                      <div className="text-secondary mt-1" style={{ fontSize: 11.5 }}>{t.descricao}</div>
+                      <div className="mt-2">
+                        <span className={`fw-bold ${(t.quantidade || 0) <= 200 ? 'text-warning' : 'text-danger'}`} style={{ fontSize: 12 }}>
+                          Estoque: {(t.quantidade || 0).toLocaleString('pt-BR')} mL
+                        </span>
+                      </div>
+                    </div>
+                    <div className="d-flex gap-1 flex-shrink-0">
+                      <ActionBtn icon="bi-pencil" color="#718096" onClick={() => openEdit(t.id)} title="Editar" disabled={busy} />
+                      <ActionBtn icon="bi-trash3" color="#C0392B" onClick={() => openDelete(t.id)} title="Excluir" disabled={busy} />
+                    </div>
                   </div>
-                </div>
-                <div className="d-flex gap-1 flex-shrink-0">
-                  <ActionBtn icon="bi-pencil" color="#718096" onClick={() => openEdit(t.id)} title="Editar" />
-                  <ActionBtn icon="bi-trash3" color="#C0392B" onClick={() => openDelete(t.id)} title="Excluir" />
-                </div>
-              </div>
-            ))
-          }
-        </div>
+                ))
+              }
+            </div>
+          </>
+        )}
       </TableCard>
 
       {/* Modal Criar/Editar */}
@@ -181,7 +216,7 @@ export default function TiposSanguineos() {
                 <div className="fw-bold text-dark" style={{ fontSize: 15 }}>{editingId ? 'Editar Tipo Sanguíneo' : 'Novo Tipo Sanguíneo'}</div>
                 <div className="text-secondary mt-1" style={{ fontSize: 11.5 }}>Cadastre um grupo ABO e fator Rh.</div>
               </div>
-              <button type="button" className="btn-close" onClick={() => { modal.hide(); setFormErrors({}); }}></button>
+              <button type="button" className="btn-close" onClick={() => { modal.hide(); setFormErrors({}); }} disabled={saving}></button>
             </div>
             <div className="modal-body p-3 p-sm-4">
               <FormSectionLabel>Identificação</FormSectionLabel>
@@ -193,7 +228,7 @@ export default function TiposSanguineos() {
                   <FormField label="Grupo ABO" required error={formErrors.grupo}>
                     <select className="form-select focus-ring-danger text-dark" value={form.grupo}
                       onChange={(e) => setForm((p) => ({ ...p, grupo: e.target.value }))}
-                      style={baseInputStyle(formErrors.grupo)}>
+                      style={baseInputStyle(formErrors.grupo)} disabled={saving}>
                       <option value="">Selecione…</option>
                       {GRUPOS.map((g) => <option key={g}>{g}</option>)}
                     </select>
@@ -202,7 +237,8 @@ export default function TiposSanguineos() {
                 <div className="col-6">
                   <FormField label="Fator Rh" required>
                     <select className="form-select focus-ring-danger text-dark" value={form.rh}
-                      onChange={(e) => setForm((p) => ({ ...p, rh: e.target.value }))} style={baseInputStyle()}>
+                      onChange={(e) => setForm((p) => ({ ...p, rh: e.target.value }))}
+                      style={baseInputStyle()} disabled={saving}>
                       {RHS.map((r) => <option key={r}>{r}</option>)}
                     </select>
                   </FormField>
@@ -215,7 +251,7 @@ export default function TiposSanguineos() {
                   <FormField label="Quantidade em estoque (mL)" required error={formErrors.quantidade}>
                     <input type="number" className="form-control focus-ring-danger text-dark" value={form.quantidade}
                       min={0} step={50} onChange={(e) => setForm((p) => ({ ...p, quantidade: e.target.value }))}
-                      style={baseInputStyle(formErrors.quantidade)} />
+                      style={baseInputStyle(formErrors.quantidade)} disabled={saving} />
                   </FormField>
                 </div>
               </div>
@@ -227,7 +263,8 @@ export default function TiposSanguineos() {
                     <textarea className="form-control focus-ring-danger text-dark" value={form.desc}
                       onChange={(e) => setForm((p) => ({ ...p, desc: e.target.value }))}
                       placeholder="Observações ou notas sobre este tipo sanguíneo…"
-                      style={{ borderColor: '#E2E8F0', borderRadius: 8, fontSize: 13.5, padding: '8px 12px', resize: 'vertical', minHeight: 80 }} />
+                      style={{ borderColor: '#E2E8F0', borderRadius: 8, fontSize: 13.5, padding: '8px 12px', resize: 'vertical', minHeight: 80 }}
+                      disabled={saving} />
                   </FormField>
                 </div>
               </div>
@@ -235,11 +272,14 @@ export default function TiposSanguineos() {
             <div className="modal-footer border-top border-light-subtle p-3 p-sm-4 d-flex justify-content-end gap-2"
               style={{ background: '#FAFBFC', borderRadius: '0 0 16px 16px' }}>
               <button className="btn btn-outline-secondary bg-white fw-semibold text-dark"
-                onClick={() => { modal.hide(); setFormErrors({}); }}
+                onClick={() => { modal.hide(); setFormErrors({}); }} disabled={saving}
                 style={{ borderColor: '#E2E8F0', borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>Cancelar</button>
               <button className="btn btn-danger fw-semibold d-inline-flex align-items-center gap-2 border-0 shadow-sm"
-                onClick={save} style={{ borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>
-                <i className="bi bi-floppy"></i> {editingId ? 'Atualizar' : 'Salvar'}
+                onClick={save} disabled={saving} style={{ borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>
+                {saving
+                  ? <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando…</>
+                  : <><i className="bi bi-floppy"></i> {editingId ? 'Atualizar' : 'Salvar'}</>
+                }
               </button>
             </div>
           </div>
@@ -257,14 +297,17 @@ export default function TiposSanguineos() {
               </div>
               <h6 className="fw-bold mb-2" style={{ fontSize: 15 }}>Excluir Tipo Sanguíneo?</h6>
               <p className="text-secondary mb-3 pb-1" style={{ fontSize: 13 }}>
-                Excluir <strong>{delTarget?.grupo}{delTarget?.rh === 'Rh(+)' ? '+' : '-'}</strong>? Esta ação não pode ser desfeita.
+                Excluir <strong>{delTarget?.grupoABO}{delTarget?.fatorRH ? '+' : '-'}</strong>? Esta ação não pode ser desfeita.
               </p>
               <div className="d-flex gap-2 justify-content-center">
-                <button className="btn btn-outline-secondary bg-white fw-semibold text-dark" onClick={() => delModal.hide()}
+                <button className="btn btn-outline-secondary bg-white fw-semibold text-dark" onClick={() => delModal.hide()} disabled={deleting}
                   style={{ borderColor: '#E2E8F0', borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>Cancelar</button>
                 <button className="btn btn-danger fw-semibold d-inline-flex align-items-center gap-2 border-0 shadow-sm"
-                  onClick={confirmDelete} style={{ borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>
-                  <i className="bi bi-trash3"></i> Excluir
+                  onClick={confirmDelete} disabled={deleting} style={{ borderRadius: 8, padding: '7px 14px', fontSize: 13 }}>
+                  {deleting
+                    ? <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Excluindo…</>
+                    : <><i className="bi bi-trash3"></i> Excluir</>
+                  }
                 </button>
               </div>
             </div>
