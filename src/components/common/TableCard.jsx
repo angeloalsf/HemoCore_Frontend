@@ -3,14 +3,16 @@ import React from 'react';
 export function TableCard({ title, count, filters, children, footer }) {
   return (
     <div className="card border border-light-subtle rounded-4 overflow-hidden" style={{ background: '#fff' }}>
-      <div className="card-header bg-white border-bottom border-light-subtle p-3 p-sm-4 d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-center">
-        <div>
-          <h5 className="fw-bold mb-0" style={{ fontSize: 14 }}>{title}</h5>
-          <p className="text-secondary mt-1 mb-0" style={{ fontSize: 11.5 }}>
-            {count} registro{count !== 1 ? 's' : ''} encontrado{count !== 1 ? 's' : ''}
-          </p>
+      <div className="card-header bg-white border-bottom border-light-subtle p-3 p-sm-4 d-flex flex-column gap-3">
+        <div className="d-flex align-items-center justify-content-between gap-2">
+          <div style={{ minWidth: 0 }}>
+            <h5 className="fw-bold mb-0" style={{ fontSize: 14 }}>{title}</h5>
+            <p className="text-secondary mt-1 mb-0" style={{ fontSize: 11.5 }}>
+              {count} registro{count !== 1 ? 's' : ''} encontrado{count !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
-        <div className="d-flex flex-wrap gap-2">{filters}</div>
+        {filters && <div className="d-flex flex-wrap gap-2">{filters}</div>}
       </div>
       {children}
       {footer && (

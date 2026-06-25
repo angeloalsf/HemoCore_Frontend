@@ -64,7 +64,7 @@ export default function Header() {
     <header className="navbar fixed-top shadow-sm flex-nowrap align-items-center navbar-hemo"
       style={{ height: 58, zIndex: 1040, padding: 0 }}>
 
-      <button className="btn btn-link text-white d-md-none text-decoration-none ms-2" type="button"
+      <button className="btn btn-link text-white d-md-none text-decoration-none ms-2 flex-shrink-0" type="button"
         data-bs-toggle="offcanvas" data-bs-target="#hcDrawer"
         style={{ width: 36, height: 36, padding: 0, background: 'rgba(255,255,255,.08)', borderRadius: 6 }}>
         <i className="bi bi-list fs-5"></i>

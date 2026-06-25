@@ -111,9 +111,12 @@ body {
 }
 
 .page-topbar {
-  height: 56px;
+  min-height: 56px;
   background: #fff;
   border-bottom: 1px solid #E2E8F0;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .bg-login {
