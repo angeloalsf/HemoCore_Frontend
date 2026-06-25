@@ -1,8 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
+const closeDrawer = () => {
+  const el = document.getElementById('hcDrawer');
+  if (!el) return;
+  import('bootstrap').then(({ Offcanvas }) => {
+    Offcanvas.getInstance(el)?.hide();
+  });
+};
+
 const DrawerLink = ({ to, icon, children }) => (
-  <NavLink to={to} className={({ isActive }) =>
+  <NavLink to={to} onClick={closeDrawer} className={({ isActive }) =>
     `text-decoration-none rounded-2 px-2 py-2 mb-1 d-flex align-items-center gap-2 fw-medium${isActive ? ' drawer-link-active text-white' : ' text-white text-opacity-50'}`
   } style={{ fontSize: 13 }}>
     <i className={`bi ${icon} fs-6`}></i> {children}
@@ -50,18 +58,12 @@ export default function Drawer() {
         <DrawerLink to="/solicitacoes" icon="bi-file-earmark-medical">Solicitações</DrawerLink>
 
         <SectionLabel>Relatórios</SectionLabel>
-        <div className="rounded-2 px-2 py-2 mb-1 d-flex align-items-center gap-2 text-white text-opacity-50 fw-medium user-select-none"
-          style={{ fontSize: 13, cursor: 'pointer' }} data-bs-toggle="collapse" data-bs-target="#hcDrawerSub" aria-expanded="false">
-          <i className="bi bi-bar-chart-fill fs-6"></i> Relatórios <i className="bi bi-chevron-down ms-auto" style={{ fontSize: 11 }}></i>
-        </div>
-        <div className="collapse" id="hcDrawerSub">
-          <DrawerLink to="/relatorios/agenda-campanhas" icon="bi-calendar-event">Agenda de Campanhas</DrawerLink>
-          <DrawerLink to="/relatorios/coletas-cidade" icon="bi-geo-fill">Coletas por Cidade</DrawerLink>
-          <DrawerLink to="/relatorios/doadores" icon="bi-people">Doadores Ativos</DrawerLink>
-          <DrawerLink to="/relatorios/maiores-solicitantes" icon="bi-trophy">Maiores Solicitantes</DrawerLink>
-          <DrawerLink to="/relatorios/solicitacoes-hospital" icon="bi-clipboard2-pulse">Sol. por Hospital</DrawerLink>
-          <DrawerLink to="/relatorios/somatorio" icon="bi-bar-chart-line">Somatório por Tipo Sanguíneo</DrawerLink>
-        </div>
+        <DrawerLink to="/relatorios/agenda-campanhas" icon="bi-calendar-event">Agenda de Campanhas</DrawerLink>
+        <DrawerLink to="/relatorios/coletas-cidade" icon="bi-geo-fill">Coletas por Cidade</DrawerLink>
+        <DrawerLink to="/relatorios/doadores" icon="bi-people">Doadores Ativos</DrawerLink>
+        <DrawerLink to="/relatorios/maiores-solicitantes" icon="bi-trophy">Maiores Solicitantes</DrawerLink>
+        <DrawerLink to="/relatorios/solicitacoes-hospital" icon="bi-clipboard2-pulse">Sol. por Hospital</DrawerLink>
+        <DrawerLink to="/relatorios/somatorio" icon="bi-bar-chart-line">Somatório por Tipo Sanguíneo</DrawerLink>
 
         <SectionLabel>Sistema</SectionLabel>
         <a href="#" className="text-decoration-none rounded-2 px-2 py-2 mb-1 d-flex align-items-center gap-2 text-white text-opacity-50 fw-medium" style={{ fontSize: 13 }}>
