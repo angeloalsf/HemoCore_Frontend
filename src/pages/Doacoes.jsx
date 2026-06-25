@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PageLayout from '../components/layout/PageLayout';
 import StatCard from '../components/common/StatCard';
-import { TableCard, EmptyState, ActionBtn, SearchInput, Pagination } from '../components/common/TableCard';
+import { TableCard, EmptyState, ActionBtn, SearchInput, Pagination, DateInput } from '../components/common/TableCard';
 import AlertBox from '../components/common/AlertBox';
 import FormField, { FormSectionLabel, AutoIdField, baseInputStyle } from '../components/common/FormField';
 import { useAlert } from '../hooks/useAlert';
@@ -40,7 +40,8 @@ export default function Doacoes() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState({});
   const [search, setSearch] = useState('');
-  const [filterData, setFilterData] = useState('');
+  const [filterInicio, setFilterInicio] = useState('');
+  const [filterFim, setFilterFim] = useState('');
   const { alert, showAlert } = useAlert();
   const modal = useBsModal();
   const delModal = useBsModal();
@@ -67,10 +68,12 @@ export default function Doacoes() {
         enfNome.toLowerCase().includes(q) ||
         uniNome.toLowerCase().includes(q) ||
         String(d.id).includes(search);
-      const matchData = !filterData || d.data === filterData;
+      const matchData =
+        (!filterInicio || (d.data && d.data >= filterInicio)) &&
+        (!filterFim || (d.data && d.data <= filterFim));
       return matchSearch && matchData;
     });
-  }, [doacoes, search, filterData]);
+  }, [doacoes, search, filterInicio, filterFim]);
 
   const openCreate = () => {
     if (busy) return;
@@ -167,9 +170,15 @@ export default function Doacoes() {
       <TableCard title="Histórico de Doações" count={filtered.length}
         filters={<>
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar doação…" />
-          <input type="date" className="form-control flex-shrink-0 w-auto"
-            style={{ borderRadius: 8, fontSize: 12.5, height: 36, borderColor: '#E2E8F0' }}
-            value={filterData} onChange={(e) => setFilterData(e.target.value)} />
+          <DateInput label="De" value={filterInicio} onChange={setFilterInicio} max={filterFim || undefined} />
+          <DateInput label="Até" value={filterFim} onChange={setFilterFim} min={filterInicio || undefined} />
+          {(filterInicio || filterFim) && (
+            <button className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 flex-shrink-0"
+              style={{ borderRadius: 8, fontSize: 12, height: 36, borderColor: '#E2E8F0' }}
+              onClick={() => { setFilterInicio(''); setFilterFim(''); }} title="Limpar período">
+              <i className="bi bi-x-lg"></i><span className="d-none d-sm-inline">Limpar</span>
+            </button>
+          )}
         </>}
         footer={<Pagination current={1} total={filtered.length} onPrev={() => {}} onNext={() => {}} />}>
 
