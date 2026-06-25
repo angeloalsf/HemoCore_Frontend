@@ -9,8 +9,8 @@ import { apiClient } from './apiClient';
 
 /**
  * Monta o corpo exatamente como o backend espera.
- * O HospitalService do backend lê `CNPJ` (maiúsculo) e `cidade?.id`,
- * portanto enviamos `CNPJ` e o objeto aninhado `cidade` — sem inventar campos.
+ * O HospitalService do backend lê `cnpj` (minúsculo) e `cidade?.id`,
+ * portanto enviamos `cnpj` e o objeto aninhado `cidade` — sem inventar campos.
  * A resposta, por outro lado, devolve `cnpj` (minúsculo).
  */
 function toPayload(form) {
@@ -18,7 +18,7 @@ function toPayload(form) {
     nome: form.nome?.trim(),
     sigla: form.sigla?.trim(),
     telefone: form.telefone?.trim(),
-    CNPJ: form.cnpj?.trim(),
+    cnpj: form.cnpj?.trim(),
     tipo: form.tipo,
     cidade: { id: Number(form.cidadeId) },
   };

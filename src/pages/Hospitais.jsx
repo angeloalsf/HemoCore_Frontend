@@ -105,12 +105,19 @@ export default function Hospitais() {
     const errs = validate(form);
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
     setFormErrors({});
+
+    // Payload limpo para a API
+    const payload = {
+      ...form,
+      cnpj: form.cnpj.replace(/\D/g, ''),
+    };
+
     try {
       if (editing) {
-        await atualizar(editing.id, form);
+        await atualizar(editing.id, payload);
         showAlert('success', `Hospital <strong>${form.nome}</strong> atualizado!`);
       } else {
-        await criar(form);
+        await criar(payload);
         showAlert('success', `Hospital <strong>${form.nome}</strong> cadastrado!`);
       }
       modal.hide();
