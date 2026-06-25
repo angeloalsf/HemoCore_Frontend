@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import PageLayout from '../../components/layout/PageLayout';
-import { FilterSelect } from '../../components/common/TableCard';
+import { FilterSelect, DateInput } from '../../components/common/TableCard';
 import { useDoadoresAtivos } from '../../hooks/useDoadoresAtivos';
+import { useSomatorioTipoSanguineo } from '../../hooks/useSomatorioTipoSanguineo';
 import { tipoSanguineoLabel } from '../../services/lookupService';
 
 // Formata data ISO (YYYY-MM-DD) vinda da API para o padrão pt-BR (apenas exibição).
@@ -51,33 +52,74 @@ function ReportTable({ headers, rows, emptyMessage = 'Nenhum dado encontrado.' }
 }
 
 export function RelSomatorio() {
-  const data = [
-    { tipo: 'A+', doadores: 312, doacoes: 890, volume: 445000, estoque: 500 },
-    { tipo: 'A-', doadores: 98, doacoes: 210, volume: 105000, estoque: 200 },
-    { tipo: 'B+', doadores: 215, doacoes: 610, volume: 305000, estoque: 450 },
-    { tipo: 'B-', doadores: 67, doacoes: 145, volume: 72500, estoque: 150 },
-    { tipo: 'AB+', doadores: 89, doacoes: 230, volume: 115000, estoque: 300 },
-    { tipo: 'AB-', doadores: 34, doacoes: 78, volume: 39000, estoque: 100 },
-    { tipo: 'O+', doadores: 389, doacoes: 1020, volume: 510000, estoque: 600 },
-    { tipo: 'O-', doadores: 80, doacoes: 238, volume: 119000, estoque: 80 },
-  ];
-  const ranked = [...data].sort((a, b) => b.doadores - a.doadores);
+  // Integração real com a API (sem mocks): GET /doacoes/somatorio-por-tipo-sanguineo.
+  // O backend agrupa as doações por tipo sanguíneo, devolve a contagem em `total`
+  // ("N Doações") e já ordena por total desc.
+  const {
+    itens,
+    dataInicio, setDataInicio,
+    dataFim, setDataFim,
+    loading, loadError, carregar,
+  } = useSomatorioTipoSanguineo();
+
+  const limparPeriodo = () => { setDataInicio(''); setDataFim(''); };
+  const temPeriodo = Boolean(dataInicio || dataFim);
+
   return (
     <ReportLayout title="Somatório por Tipo Sanguíneo em Doações" subtitle="Relatório de doações agrupadas por tipo sanguíneo">
-      <ReportTable
-        headers={['Classificação', 'Tipo Sanguíneo', 'Quantidade de Doadores', 'Volume (mL)']}
-        rows={ranked.map((d, i) => (
-          <tr key={d.tipo} className="align-middle">
-            <td className="py-3 px-3 border-bottom border-light-subtle">
-              <span className={`fw-bold rounded-circle d-inline-flex align-items-center justify-content-center ${i < 3 ? 'text-danger' : 'text-secondary'}`}
-                style={{ width: 28, height: 28, fontSize: 12, background: i < 3 ? '#FDECEA' : '#F4F6F9' }}>{i + 1}º</span>
-            </td>
-            <td className="py-3 px-3 border-bottom border-light-subtle"><span className="blood-type-badge" style={{ fontSize: 14 }}>{d.tipo}</span></td>
-            <td className="py-3 px-3 border-bottom border-light-subtle text-dark">{d.doadores.toLocaleString('pt-BR')}</td>
-            <td className="py-3 px-3 border-bottom border-light-subtle text-danger fw-bold">{d.volume.toLocaleString('pt-BR')}</td>
-          </tr>
-        ))}
-      />
+      {loadError && (
+        <div className="alert bg-danger-subtle text-danger border border-danger-subtle d-flex align-items-center justify-content-between gap-2 py-2 px-3 shadow-sm mb-3"
+          style={{ borderRadius: 10, fontSize: 13 }}>
+          <span><i className="bi bi-exclamation-triangle-fill me-2"></i>{loadError}</span>
+          <button className="btn btn-sm btn-danger text-white fw-semibold border-0" style={{ borderRadius: 8, fontSize: 12 }}
+            onClick={() => carregar()} disabled={loading}>
+            <i className="bi bi-arrow-clockwise me-1"></i>Tentar novamente
+          </button>
+        </div>
+      )}
+
+      <div className="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-center mb-3">
+        <p className="text-secondary mb-0" style={{ fontSize: 11.5 }}>
+          {loading
+            ? 'Carregando…'
+            : `${itens.length} tipo${itens.length !== 1 ? 's' : ''} sanguíneo${itens.length !== 1 ? 's' : ''} com doações`}
+        </p>
+        <div className="d-flex flex-wrap align-items-center gap-2" style={loading ? { opacity: 0.6 } : undefined}>
+          <DateInput label="De" value={dataInicio} onChange={setDataInicio} max={dataFim || undefined} disabled={loading} />
+          <DateInput label="Até" value={dataFim} onChange={setDataFim} min={dataInicio || undefined} disabled={loading} />
+          {temPeriodo && (
+            <button className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 flex-shrink-0"
+              style={{ borderRadius: 8, fontSize: 12, height: 36, borderColor: '#E2E8F0' }}
+              onClick={limparPeriodo} disabled={loading} title="Limpar período">
+              <i className="bi bi-x-lg"></i><span className="d-none d-sm-inline">Limpar</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="card border border-light-subtle rounded-4 text-center text-secondary py-5 px-3" style={{ background: '#fff', fontSize: 13.5 }}>
+          <div className="spinner-border text-danger mb-2 mx-auto" role="status" style={{ width: 28, height: 28 }}>
+            <span className="visually-hidden">Carregando…</span>
+          </div>
+          <div>Carregando somatório por tipo sanguíneo…</div>
+        </div>
+      ) : (
+        <ReportTable
+          headers={['Classificação', 'Tipo Sanguíneo', 'Total de Doações']}
+          emptyMessage={temPeriodo ? 'Nenhuma doação registrada no período selecionado.' : 'Nenhuma doação registrada.'}
+          rows={itens.map((d, i) => (
+            <tr key={d.tipoSanguineo || i} className="align-middle">
+              <td className="py-3 px-3 border-bottom border-light-subtle">
+                <span className={`fw-bold rounded-circle d-inline-flex align-items-center justify-content-center ${i < 3 ? 'text-danger' : 'text-secondary'}`}
+                  style={{ width: 28, height: 28, fontSize: 12, background: i < 3 ? '#FDECEA' : '#F4F6F9' }}>{i + 1}º</span>
+              </td>
+              <td className="py-3 px-3 border-bottom border-light-subtle"><span className="blood-type-badge" style={{ fontSize: 14 }}>{d.tipoSanguineo}</span></td>
+              <td className="py-3 px-3 border-bottom border-light-subtle text-danger fw-bold">{d.totalDoacoes.toLocaleString('pt-BR')}</td>
+            </tr>
+          ))}
+        />
+      )}
     </ReportLayout>
   );
 }

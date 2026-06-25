@@ -71,6 +71,17 @@ export function FilterSelect({ value, onChange, options, style, disabled = false
   );
 }
 
+export function DateInput({ value, onChange, label, min, max, disabled = false, style }) {
+  return (
+    <div className="d-inline-flex align-items-center gap-2 flex-shrink-0">
+      {label && <span className="text-secondary fw-semibold" style={{ fontSize: 12 }}>{label}</span>}
+      <input type="date" className="form-select flex-shrink-0 w-auto" value={value}
+        onChange={(e) => onChange(e.target.value)} disabled={disabled} min={min} max={max}
+        style={{ borderRadius: 8, fontSize: 12.5, height: 36, borderColor: '#E2E8F0', ...style }} />
+    </div>
+  );
+}
+
 export function Pagination({ current, total, onPrev, onNext }) {
   return (
     <div className="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
