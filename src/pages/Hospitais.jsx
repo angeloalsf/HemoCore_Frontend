@@ -74,7 +74,7 @@ export default function Hospitais() {
         cidadeNome.toLowerCase().includes(q);
       const matchTipo = !filterTipo || h.tipo === filterTipo;
       return matchSearch && matchTipo;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [hospitais, search, filterTipo]);
 
   const openCreate = () => {
@@ -94,7 +94,7 @@ export default function Hospitais() {
       ufId: String(h.cidade?.uf?.id ?? h.cidade?.ufId ?? ''),
       cidadeId: String(h.cidadeId ?? h.cidade?.id ?? ''),
       telefone: h.telefone ?? '',
-      cnpj: h.cnpj ?? '',
+      cnpj: formatCNPJ(h.cnpj ?? ''),
       tipo: h.tipo ?? 'PUBLICO',
     });
     setFormErrors({});
@@ -224,7 +224,7 @@ export default function Hospitais() {
                       {(h.cidade?.uf?.sigla ?? '—')} / {(h.cidade?.nome ?? '—')}
                     </td>
                     <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontSize: 12.5 }}>{h.telefone}</td>
-                    <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontFamily: 'monospace', fontSize: 11.5 }}>{h.cnpj}</td>
+                    <td className="py-3 px-3 border-bottom border-light-subtle text-dark" style={{ fontFamily: 'monospace', fontSize: 11.5 }}>{formatCNPJ(h.cnpj ?? '')}</td>
                     <td className="py-3 px-3 border-bottom border-light-subtle">
                       <span className={`fw-semibold rounded-pill ${tipoCls(h.tipo)}`} style={{ fontSize: 11, padding: '2px 9px' }}>{tipoLabel(h.tipo)}</span>
                     </td>

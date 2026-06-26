@@ -65,7 +65,7 @@ export default function Campanhas() {
       (c.nome ?? '').toLowerCase().includes(q) ||
       unidadeNome(c).toLowerCase().includes(q) ||
       cidadeDe(c).toLowerCase().includes(q)
-    );
+    ).sort((a, b) => a.id - b.id);
   }, [campanhas, search]);
 
   const addItem = () => setForm((p) => ({ ...p, itens: [...p.itens, { ...EMPTY_ITEM }] }));

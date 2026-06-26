@@ -72,7 +72,7 @@ export default function Doacoes() {
         (!filterInicio || (d.data && d.data >= filterInicio)) &&
         (!filterFim || (d.data && d.data <= filterFim));
       return matchSearch && matchData;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [doacoes, search, filterInicio, filterFim]);
 
   const openCreate = () => {

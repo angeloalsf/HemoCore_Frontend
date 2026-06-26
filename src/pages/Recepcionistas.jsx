@@ -69,7 +69,7 @@ export default function Recepcionistas() {
         cidadeNome.toLowerCase().includes(q);
       const matchUf = !filterUf || ufSigla === filterUf;
       return matchSearch && matchUf;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [recepcionistas, search, filterUf]);
 
   const openCreate = () => {

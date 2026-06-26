@@ -70,7 +70,7 @@ export default function UnidadesColeta() {
         cidadeNome.toLowerCase().includes(q);
       const matchTipo = !filterTipo || u.tipo_unidade === filterTipo;
       return matchSearch && matchTipo;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [unidades, search, filterTipo]);
 
   const openCreate = () => {

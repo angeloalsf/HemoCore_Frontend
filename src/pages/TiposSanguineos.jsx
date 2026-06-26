@@ -36,7 +36,7 @@ export default function TiposSanguineos() {
   const filtered = tipos.filter((t) =>
     `${t.grupoABO}${t.fatorRH ? '+' : '-'}`.toLowerCase().includes(search.toLowerCase()) ||
     (t.descricao || '').toLowerCase().includes(search.toLowerCase())
-  );
+  ).sort((a, b) => a.id - b.id);
 
   const openCreate = () => { setEditingId(null); setForm(EMPTY_FORM); setFormErrors({}); modal.show(); };
   const openEdit = (id) => {

@@ -74,7 +74,7 @@ export default function Doadores() {
         cidadeNome.toLowerCase().includes(q);
       const matchStatus = !filterStatus || d.status === filterStatus;
       return matchSearch && matchStatus;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [doadores, search, filterStatus]);
 
   const openCreate = () => {

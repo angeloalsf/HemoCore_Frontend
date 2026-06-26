@@ -53,7 +53,7 @@ export default function Cidades() {
         sigla.toLowerCase().includes(q);
       const matchUF = !filterUF || String(c.uf?.id) === String(filterUF);
       return matchSearch && matchUF;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [cidades, search, filterUF]);
 
   const openCreate = () => {
