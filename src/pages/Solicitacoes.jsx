@@ -102,7 +102,7 @@ export default function Solicitacoes() {
       const matchStatus = !filterStatus || s.status === filterStatus;
       const matchUrg = !filterUrg || s.urgencia === filterUrg;
       return matchSearch && matchStatus && matchUrg;
-    });
+    }).sort((a, b) => a.id - b.id);
   }, [solicitacoes, search, filterStatus, filterUrg]);
 
   const openCreate = () => {
@@ -123,8 +123,7 @@ export default function Solicitacoes() {
       hospitalId: String(s.hospitalId ?? s.hospital?.id ?? ''),
       data: s.data ?? today(),
       status: s.status ?? 'EM ABERTO',
-      // Urgência CRÍTICA não é selecionável; ao editar, cai para ALTA no select.
-      urgencia: s.urgencia === 'CRÍTICA' ? 'ALTA' : (s.urgencia ?? 'BAIXA'),
+      urgencia: s.urgencia ?? 'BAIXA',
       observacao: s.observacao ?? '',
     });
     setItens((s.itensSolicitacao || []).map((i) => ({
@@ -371,8 +370,9 @@ export default function Solicitacoes() {
                 <div className="col-12 col-sm-6">
                   <FormField label="Urgência" required hint="A urgência CRÍTICA é atribuída automaticamente pelo sistema.">
                     <select className="form-select focus-ring-danger text-dark" value={form.urgencia}
-                      onChange={(e) => setForm((p) => ({ ...p, urgencia: e.target.value }))} style={baseInputStyle()} disabled={saving}>
+                      onChange={(e) => setForm((p) => ({ ...p, urgencia: e.target.value }))} style={baseInputStyle()} disabled={saving || form.urgencia === 'CRÍTICA'}>
                       {URGENCIA_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {form.urgencia === 'CRÍTICA' && <option value="CRÍTICA">Crítica</option>}
                     </select>
                   </FormField>
                 </div>
