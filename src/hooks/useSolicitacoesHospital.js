@@ -2,58 +2,70 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient, ApiError } from '../services/apiClient';
 
 export function useSolicitacoesHospital() {
-  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [solicitacoes, setSolicitacoes] = useState({ tipo: 'flat', rows: [] });
+  const [hospitais, setHospitais] = useState([]);
   const [hospitalId, setHospitalId] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    apiClient.get('/hospitais')
+      .then(data => setHospitais(Array.isArray(data) ? [...data].sort((a, b) => a.nome.localeCompare(b.nome)) : []))
+      .catch(() => {});
+  }, []);
 
   const carregar = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await apiClient.get('/solicitacoes');
-      setSolicitacoes(Array.isArray(data) ? data : []);
+      let data;
+      if (hospitalId) {
+        const params = new URLSearchParams();
+        if (dataInicio) params.set('inicio', dataInicio);
+        if (dataFim) params.set('termino', dataFim);
+        const query = params.toString() ? `?${params}` : '';
+        data = await apiClient.get(`/solicitacoes/por-hospital/${hospitalId}${query}`);
+        setSolicitacoes({ tipo: 'flat', rows: Array.isArray(data) ? data : [] });
+      } else {
+        data = await apiClient.get('/solicitacoes');
+        setSolicitacoes({ tipo: 'nested', rows: Array.isArray(data) ? data : [] });
+      }
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.toUserMessage() : 'Erro ao carregar solicitações.');
-      setSolicitacoes([]);
+      setSolicitacoes({ tipo: 'flat', rows: [] });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hospitalId, dataInicio, dataFim]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Extrai hospitais únicos presentes nas solicitações
-  const hospitais = useMemo(() => {
-    const seen = new Map();
-    for (const sol of solicitacoes) {
-      const h = sol.hospital;
-      if (h && !seen.has(h.id)) seen.set(h.id, h);
-    }
-    return [...seen.values()].sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [solicitacoes]);
-
-  // Expande itens de cada solicitação, aplicando filtros de hospital e período
   const itens = useMemo(() => {
-    const rows = [];
-    for (const sol of solicitacoes) {
-      if (hospitalId && String(sol.hospital?.id) !== String(hospitalId)) continue;
-      if (dataInicio && sol.data < dataInicio) continue;
-      if (dataFim && sol.data > dataFim) continue;
-      for (const item of sol.itensSolicitacao || []) {
-        const ts = item.tipoSanguineo;
-        rows.push({
-          hospital: sol.hospital?.nome || '',
-          tipoSanguineo: ts ? `${ts.grupoABO}${ts.fatorRH ? '+' : '-'}` : '',
-          quantidade: item.quantidade || 0,
-          data: sol.data || '',
+    const rows = solicitacoes.tipo === 'flat'
+      ? solicitacoes.rows.map((sol) => ({
+          hospital: sol.hospital ?? '',
+          tipoSanguineo: sol.tiposanguineo ?? '',
+          quantidade: Number(sol.quantia) || 0,
+          data: sol.datasolicitacao ?? '',
+        }))
+      : solicitacoes.rows.flatMap((sol) => {
+          if (sol.status !== 'FINALIZADA') return [];
+          if (dataInicio && sol.data < dataInicio) return [];
+          if (dataFim && sol.data > dataFim) return [];
+          return (sol.itensSolicitacao || []).map((item) => {
+            const ts = item.tipoSanguineo;
+            return {
+              hospital: sol.hospital?.nome ?? '',
+              tipoSanguineo: ts ? `${ts.grupoABO}${ts.fatorRH ? '+' : '-'}` : '',
+              quantidade: Number(item.quantidade) || 0,
+              data: sol.data ?? '',
+            };
+          });
         });
-      }
-    }
     return rows.sort((a, b) => b.data.localeCompare(a.data));
-  }, [solicitacoes, hospitalId, dataInicio, dataFim]);
+  }, [solicitacoes, dataInicio, dataFim]);
 
   return {
     itens, hospitais,

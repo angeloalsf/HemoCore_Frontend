@@ -433,7 +433,7 @@ export function RelSolicitacoesHospital() {
   const limpar = () => { setHospitalId(''); setDataInicio(''); setDataFim(''); };
 
   return (
-    <ReportLayout title="Solicitações por Hospital" subtitle="Histórico detalhado de solicitações de sangue por hospital">
+    <ReportLayout title="Solicitações por Hospital" subtitle="Histórico detalhado de solicitações de sangue FINALIZADAS por hospital">
       {loadError && <ErrorBanner message={loadError} onRetry={() => carregar()} loading={loading} />}
 
       <div className="d-flex flex-column flex-md-row gap-3 justify-content-md-between align-items-md-center mb-3">
