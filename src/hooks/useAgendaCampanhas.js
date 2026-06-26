@@ -1,81 +1,74 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient, ApiError } from '../services/apiClient';
+import { ufService, cidadeService } from '../services/lookupService';
 
 export function useAgendaCampanhas() {
-  const [campanhas, setCampanhas] = useState([]);
+  const [agenda, setAgenda] = useState([]);
+
+  // Dados auxiliares para os selects (carregados uma vez)
+  const [ufs, setUfs] = useState([]);
+  const [todasCidades, setTodasCidades] = useState([]);
+  const [todasUnidades, setTodasUnidades] = useState([]);
+
+  // Filtros (enviados como query params ao backend)
   const [ufId, setUfIdRaw] = useState('');
   const [cidadeId, setCidadeIdRaw] = useState('');
   const [unidadeColetaId, setUnidadeColetaId] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
+  // Carga única dos selects (UFs, Cidades, Unidades de Coleta)
+  useEffect(() => {
+    Promise.all([
+      ufService.listar(),
+      cidadeService.listar(),
+      apiClient.get('/unidades-coleta'),
+    ]).then(([us, cs, unis]) => {
+      setUfs(Array.isArray(us) ? us : []);
+      setTodasCidades(Array.isArray(cs) ? cs : []);
+      setTodasUnidades(Array.isArray(unis) ? unis : []);
+    }).catch(() => {});
+  }, []);
+
+  // Re-busca do backend toda vez que um filtro mudar
   const carregar = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await apiClient.get('/campanhas');
-      setCampanhas(Array.isArray(data) ? data : []);
+      const params = new URLSearchParams();
+      if (ufId) params.set('ufId', ufId);
+      if (cidadeId) params.set('cidadeId', cidadeId);
+      if (unidadeColetaId) params.set('unidadeColetaId', unidadeColetaId);
+      const qs = params.toString();
+      const data = await apiClient.get(`/campanhas/agenda${qs ? `?${qs}` : ''}`);
+      setAgenda(Array.isArray(data) ? data : []);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.toUserMessage() : 'Erro ao carregar agenda de campanhas.');
-      setCampanhas([]);
+      setAgenda([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ufId, cidadeId, unidadeColetaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // UFs presentes nas campanhas
-  const ufs = useMemo(() => {
-    const seen = new Map();
-    for (const c of campanhas) {
-      const uf = c.unidadeColeta?.cidade?.uf;
-      if (uf && !seen.has(uf.id)) seen.set(uf.id, uf);
-    }
-    return [...seen.values()].sort((a, b) => a.sigla.localeCompare(b.sigla));
-  }, [campanhas]);
+  // Cascata client-side apenas para os selects dos filtros
+  const cidades = useMemo(() =>
+    ufId
+      ? todasCidades.filter(c => String(c.uf?.id ?? c.ufId) === String(ufId))
+      : todasCidades,
+    [todasCidades, ufId]
+  );
 
-  // Cidades filtradas pela UF selecionada
-  const cidades = useMemo(() => {
-    const seen = new Map();
-    for (const c of campanhas) {
-      const cidade = c.unidadeColeta?.cidade;
-      const uf = cidade?.uf;
-      if (ufId && String(uf?.id) !== String(ufId)) continue;
-      if (cidade && !seen.has(cidade.id)) seen.set(cidade.id, cidade);
-    }
-    return [...seen.values()].sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [campanhas, ufId]);
+  const unidades = useMemo(() =>
+    cidadeId
+      ? todasUnidades.filter(u => String(u.cidade?.id ?? u.cidadeId) === String(cidadeId))
+      : todasUnidades,
+    [todasUnidades, cidadeId]
+  );
 
-  // Unidades filtradas pela UF e cidade selecionadas
-  const unidades = useMemo(() => {
-    const seen = new Map();
-    for (const c of campanhas) {
-      const unidade = c.unidadeColeta;
-      const cidade = unidade?.cidade;
-      const uf = cidade?.uf;
-      if (ufId && String(uf?.id) !== String(ufId)) continue;
-      if (cidadeId && String(cidade?.id) !== String(cidadeId)) continue;
-      if (unidade && !seen.has(unidade.id)) seen.set(unidade.id, unidade);
-    }
-    return [...seen.values()].sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [campanhas, ufId, cidadeId]);
-
-  // Campanhas filtradas com ordenação por data
-  const agenda = useMemo(() => campanhas
-    .filter(c => {
-      const uf = c.unidadeColeta?.cidade?.uf;
-      const cidade = c.unidadeColeta?.cidade;
-      const unidade = c.unidadeColeta;
-      if (ufId && String(uf?.id) !== String(ufId)) return false;
-      if (cidadeId && String(cidade?.id) !== String(cidadeId)) return false;
-      if (unidadeColetaId && String(unidade?.id) !== String(unidadeColetaId)) return false;
-      return true;
-    })
-    .sort((a, b) => (a.data || '').localeCompare(b.data || '')),
-  [campanhas, ufId, cidadeId, unidadeColetaId]);
-
-  // Filtros em cascata: trocar UF limpa cidade e unidade
+  // Trocar UF limpa cidade e unidade
   const setUfId = useCallback((val) => {
     setUfIdRaw(val);
     setCidadeIdRaw('');
